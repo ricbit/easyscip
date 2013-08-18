@@ -2,6 +2,8 @@
 // A C++ interface to SCIP that is easy to use.
 // by Ricardo Bittencourt 2013
 
+// Please check sendmoremoney_binary.cc for a sample usage.
+
 #include <vector>
 #include "objscip/objscip.h"
 #include "objscip/objscipdefplugins.h"
@@ -25,13 +27,10 @@ class Variable {
 class BinaryVariable : public Variable {
  protected:
   BinaryVariable(SCIP *scip, double objective) {
-    SCIPcreateVarBasic(scip, &var_,
-        "var", 0, 1, objective, 
-        SCIP_VARTYPE_BINARY);
+    SCIPcreateVarBasic(
+        scip, &var_, "variable", 0, 1, objective, SCIP_VARTYPE_BINARY);
     SCIPaddVar(scip, var_);
   }
-  friend Constraint;
-  friend Solution;
   friend MIPSolver;
 };
 
@@ -47,8 +46,9 @@ class Constraint {
     copy(vars_.begin(), vars_.end(), vars);
     copy(vals_.begin(), vals_.end(), vals);
     SCIP_CONS *cons;
-    SCIPcreateConsLinear(scip_, &cons, "cons", vars_.size(), vars, vals, 
-        lower_bound, upper_bound, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE);
+    SCIPcreateConsLinear(scip_, &cons, "constraint", vars_.size(), vars, vals, 
+        lower_bound, upper_bound, TRUE, TRUE, TRUE, TRUE, TRUE,
+        FALSE, FALSE, FALSE, FALSE, FALSE);
     SCIPaddCons(scip_, cons);
     SCIPreleaseCons(scip_, &cons);
     delete[] vars;
@@ -92,7 +92,6 @@ class MIPSolver {
     SCIPsetMessagehdlrLogfile(scip_, "log.txt");
     SCIPprintVersion(scip_, NULL);
     SCIPsetEmphasis(scip_, SCIP_PARAMEMPHASIS_FEASIBILITY, FALSE);
-    SCIPsetRealParam(scip_, "limits/time", 3*60*60);
     SCIPincludeDefaultPlugins(scip_);
     SCIPcreateProbBasic(scip_, "MIP");
   }
@@ -108,6 +107,9 @@ class MIPSolver {
   Solution solve() {
     SCIPsolve(scip_);
     return Solution(scip_, SCIPgetBestSol(scip_));
+  }
+  void set_time_limit(int seconds) {
+    SCIPsetRealParam(scip_, "limits/time", seconds);
   }
  private:
   SCIP *scip_;
