@@ -2,7 +2,7 @@
 // A C++ interface to SCIP that is easy to use.
 // by Ricardo Bittencourt 2013
 
-// Please check sendmoremoney_binary.cc for a sample usage.
+// Please check the examples for a sample usage.
 
 #include <vector>
 #include "objscip/objscip.h"
@@ -29,6 +29,18 @@ class BinaryVariable : public Variable {
   BinaryVariable(SCIP *scip, double objective) {
     SCIPcreateVarBasic(
         scip, &var_, "variable", 0, 1, objective, SCIP_VARTYPE_BINARY);
+    SCIPaddVar(scip, var_);
+  }
+  friend MIPSolver;
+};
+
+class IntegerVariable : public Variable {
+ protected:
+  IntegerVariable(SCIP *scip, double lower_bound, double upper_bound, 
+                  double objective) {
+    SCIPcreateVarBasic(
+        scip, &var_, "variable", lower_bound, upper_bound, objective, 
+        SCIP_VARTYPE_INTEGER);
     SCIPaddVar(scip, var_);
   }
   friend MIPSolver;
@@ -71,6 +83,14 @@ class Solution {
   double value(Variable& var) {
     return SCIPgetSolVal(scip_, sol_, var.var_);
   }
+  void set_value(Variable& var, double value) {
+    SCIPsetSolVal(scip_, sol_, var.var_, value);
+  }
+  bool commit() {
+    unsigned int stored;
+    SCIPaddSolFree(scip_, &sol_, &stored);
+    return bool(stored);
+  }
   bool is_optimal() {
     return SCIPgetStatus(scip_) == SCIP_STATUS_OPTIMAL;
   }
@@ -79,6 +99,9 @@ class Solution {
   }
  protected:
   Solution(SCIP *scip, SCIP_Sol *sol) : scip_(scip), sol_(sol) {
+  }
+  Solution(SCIP *scip) : scip_(scip) {
+    SCIPcreateSol(scip_, &sol_, NULL);
   }
   SCIP *scip_;
   SCIP_Sol *sol_;
@@ -91,7 +114,7 @@ class MIPSolver {
     SCIPcreate (&scip_);
     SCIPsetMessagehdlrLogfile(scip_, "log.txt");
     SCIPprintVersion(scip_, NULL);
-    SCIPsetEmphasis(scip_, SCIP_PARAMEMPHASIS_FEASIBILITY, FALSE);
+    SCIPsetEmphasis(scip_, SCIP_PARAMEMPHASIS_OPTIMALITY, FALSE);
     SCIPincludeDefaultPlugins(scip_);
     SCIPcreateProbBasic(scip_, "MIP");
   }
@@ -101,6 +124,10 @@ class MIPSolver {
   Variable binary_variable(double objective) {
     return BinaryVariable(scip_, objective);
   }
+  Variable integer_variable(int lower_bound, int upper_bound, 
+                            double objective) {
+    return IntegerVariable(scip_, lower_bound, upper_bound, objective);
+  }
   Constraint constraint() {
     return Constraint(scip_);
   }
@@ -108,8 +135,16 @@ class MIPSolver {
     SCIPsolve(scip_);
     return Solution(scip_, SCIPgetBestSol(scip_));
   }
+  Solution empty_solution() {
+    return Solution(scip_);
+  }
   void set_time_limit(int seconds) {
     SCIPsetRealParam(scip_, "limits/time", seconds);
+  }
+  int count_solutions() {
+    SCIPcount(scip_);
+    SCIP_Bool valid;
+    return SCIPgetNCountedSols(scip_, &valid);
   }
  private:
   SCIP *scip_;

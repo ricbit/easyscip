@@ -12,7 +12,7 @@ int main() {
   MIPSolver solver;
 
   // Add one binary variable for each assignment between letter and digit.
-  // We're looking only for feasibility, not optimility, so we're
+  // We're looking only for feasibility, not optimality, so we're
   // setting the objective coefficient for all variables to 0.
   string unknowns = "sendmory";
   vector< vector<Variable> > var(unknowns.size());
@@ -46,8 +46,8 @@ int main() {
   }
   column0.add_variable(carry[0], -10);
   // Commit the constraint to the solver.
-  // The solver uses inequalities for the form lhs <= x <= rhs,
-  // but we can turn that into an equality by setting lhs=rhs.
+  // The solver uses inequalities of the form lhs <= x <= rhs,
+  // but we can turn that into an equality by setting lhs = rhs.
   // The Constraint object can be deleted after it's committed.
   // In this case, it will be deleted when it falls out of the scope.
   column0.commit(0, 0);
@@ -115,6 +115,16 @@ int main() {
     }
     digit.commit(0, 1);
   }
+
+  // S is the first digit of a number, cannot be zero.
+  Constraint s_first = solver.constraint();
+  s_first.add_variable(var[0][0], 1);
+  s_first.commit(0, 0);
+
+  // M is the first digit of a number, cannot be zero.
+  Constraint m_first = solver.constraint();
+  m_first.add_variable(var[4][0], 1);
+  m_first.commit(0, 0);
 
   // Solve the MIP model.
   Solution sol = solver.solve();
